@@ -46,6 +46,7 @@ struct InstanceNetworkParameters {
     uint64_t                                                        mIngressKbit {};
     uint64_t                                                        mEgressKbit {};
     StaticArray<StaticString<cExposedPortLen>, cMaxNumExposedPorts> mExposedPorts;
+    StaticArray<PublishedPort, cMaxNumPublishedPorts>               mPublishedPorts;
     StaticArray<Host, cMaxNumHosts>                                 mHosts;
     StaticString<cFilePathLen>                                      mHostsFilePath;
     StaticString<cFilePathLen>                                      mResolvConfFilePath;
@@ -64,7 +65,8 @@ struct InstanceNetworkParameters {
             && mNetworkParameters == instanceNetworkParams.mNetworkParameters
             && mHostname == instanceNetworkParams.mHostname && mAliases == instanceNetworkParams.mAliases
             && mIngressKbit == instanceNetworkParams.mIngressKbit && mEgressKbit == instanceNetworkParams.mEgressKbit
-            && mExposedPorts == instanceNetworkParams.mExposedPorts && mHosts == instanceNetworkParams.mHosts
+            && mExposedPorts == instanceNetworkParams.mExposedPorts
+            && mPublishedPorts == instanceNetworkParams.mPublishedPorts && mHosts == instanceNetworkParams.mHosts
             && mHostsFilePath == instanceNetworkParams.mHostsFilePath
             && mResolvConfFilePath == instanceNetworkParams.mResolvConfFilePath
             && mUploadLimit == instanceNetworkParams.mUploadLimit

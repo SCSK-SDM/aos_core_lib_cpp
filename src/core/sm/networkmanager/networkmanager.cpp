@@ -559,7 +559,7 @@ Error NetworkManager::PrepareCNIConfig(const String& instanceID, const String& n
         return err;
     }
 
-    if (auto err = PrepareRuntimeConfig(instanceID, rtConfig, hosts); !err.IsNone()) {
+    if (auto err = PrepareRuntimeConfig(instanceID, network, rtConfig, hosts); !err.IsNone()) {
         return err;
     }
 
@@ -823,8 +823,8 @@ Error NetworkManager::WriteHosts(const Array<Host>& hosts, int fd) const
     return ErrorEnum::eNone;
 };
 
-Error NetworkManager::PrepareRuntimeConfig(
-    const String& instanceID, cni::RuntimeConf& rt, const Array<StaticString<cHostNameLen>>& hosts) const
+Error NetworkManager::PrepareRuntimeConfig(const String& instanceID, const InstanceNetworkParameters& network,
+    cni::RuntimeConf& rt, const Array<StaticString<cHostNameLen>>& hosts) const
 {
     LOG_DBG() << "Prepare runtime config" << Log::Field("instanceID", instanceID);
 
@@ -844,6 +844,19 @@ Error NetworkManager::PrepareRuntimeConfig(
 
     if (!hosts.IsEmpty()) {
         rt.mCapabilityArgs.mHost = hosts;
+    }
+
+    for (const auto& publishedPort : network.mPublishedPorts) {
+        cni::PortMapEntry entry;
+
+        entry.mHostPort      = publishedPort.mHostPort;
+        entry.mContainerPort = publishedPort.mContainerPort;
+        entry.mProtocol      = publishedPort.mProtocol;
+        entry.mHostIP        = publishedPort.mHostIP;
+
+        if (auto err = rt.mCapabilityArgs.mPortMappings.PushBack(entry); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
     }
 
     return ErrorEnum::eNone;
@@ -868,6 +881,10 @@ Error NetworkManager::PrepareNetworkConfigList(const String& instanceID, const S
     }
 
     if (auto err = CreateDNSPluginConfig(networkID, network, net.mDNS); !err.IsNone()) {
+        return err;
+    }
+
+    if (auto err = CreatePortmapPluginConfig(network, net.mPortmap); !err.IsNone()) {
         return err;
     }
 
@@ -940,6 +957,24 @@ Error NetworkManager::CreateFirewallPluginConfig(
             return AOS_ERROR_WRAP(err);
         }
     }
+
+    return ErrorEnum::eNone;
+}
+
+Error NetworkManager::CreatePortmapPluginConfig(
+    const InstanceNetworkParameters& network, cni::PortmapPluginConf& config) const
+{
+    if (network.mPublishedPorts.IsEmpty()) {
+        return ErrorEnum::eNone;
+    }
+
+    LOG_DBG() << "Create portmap plugin config";
+
+    config.mType = "portmap";
+    // SNAT makes the mapping reachable from the host itself (hairpin), not only from outside.
+    config.mSNAT = true;
+    // Actual mappings are passed via runtimeConfig.portMappings, so the capability must be declared.
+    config.mCapabilityPortMappings = true;
 
     return ErrorEnum::eNone;
 }

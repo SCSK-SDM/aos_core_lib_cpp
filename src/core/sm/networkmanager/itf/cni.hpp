@@ -170,6 +170,29 @@ struct Capabilities {
 };
 
 /**
+ * Port mapping entry passed to the portmap plugin via runtime config.
+ */
+struct PortMapEntry {
+    uint16_t                       mHostPort {};
+    uint16_t                       mContainerPort {};
+    StaticString<cProtocolNameLen> mProtocol;
+    StaticString<cIPLen>           mHostIP;
+};
+
+/**
+ * Portmap plugin configuration.
+ *
+ * Creates DNAT rules forwarding a host port to the instance port, which makes the
+ * instance reachable from outside the unit. Actual mappings are passed as capability
+ * arguments (runtimeConfig.portMappings), so mCapabilities.mPortMappings must be set.
+ */
+struct PortmapPluginConf {
+    StaticString<cPluginTypeLen> mType;
+    bool                         mSNAT {};
+    bool                         mCapabilityPortMappings {};
+};
+
+/**
  * DNS plugin configuration.
  */
 struct DNSPluginConf {
@@ -185,6 +208,7 @@ struct DNSPluginConf {
  */
 struct CapabilityArgs {
     StaticArray<StaticString<cHostNameLen>, cMaxNumDNSServers * cMaxNumInstances> mHost;
+    StaticArray<PortMapEntry, cMaxNumPublishedPorts>                              mPortMappings;
 };
 
 /**
@@ -231,6 +255,7 @@ struct NetworkConfigList {
     FirewallPluginConf        mFirewall;
     BandwidthNetConf          mBandwidth;
     DNSPluginConf             mDNS;
+    PortmapPluginConf         mPortmap;
     Result                    mPrevResult;
 };
 

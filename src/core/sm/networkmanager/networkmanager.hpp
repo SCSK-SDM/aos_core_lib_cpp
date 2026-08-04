@@ -164,14 +164,15 @@ private:
         cni::NetworkConfigList& net, cni::RuntimeConf& rt, Array<StaticString<cHostNameLen>>& hosts) const;
     Error PrepareNetworkConfigList(const String& instanceID, const String& networkID,
         const InstanceNetworkParameters& network, cni::NetworkConfigList& net) const;
-    Error PrepareRuntimeConfig(
-        const String& instanceID, cni::RuntimeConf& rt, const Array<StaticString<cHostNameLen>>& hosts) const;
+    Error PrepareRuntimeConfig(const String& instanceID, const InstanceNetworkParameters& network,
+        cni::RuntimeConf& rt, const Array<StaticString<cHostNameLen>>& hosts) const;
 
     Error CreateBridgePluginConfig(
         const String& networkID, const InstanceNetworkParameters& network, cni::BridgePluginConf& config) const;
     Error CreateFirewallPluginConfig(
         const String& instanceID, const InstanceNetworkParameters& network, cni::FirewallPluginConf& config) const;
     Error CreateBandwidthPluginConfig(const InstanceNetworkParameters& network, cni::BandwidthNetConf& config) const;
+    Error CreatePortmapPluginConfig(const InstanceNetworkParameters& network, cni::PortmapPluginConf& config) const;
     Error CreateDNSPluginConfig(
         const String& networkID, const InstanceNetworkParameters& network, cni::DNSPluginConf& config) const;
     Error UpdateInstanceNetworkCache(const String& instanceID, const String& networkID, const String& instanceIP,

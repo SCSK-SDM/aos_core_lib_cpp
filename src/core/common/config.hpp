@@ -527,6 +527,13 @@
 #endif
 
 /**
+ * Max number of published ports.
+ */
+#ifndef AOS_CONFIG_TYPES_MAX_NUM_PUBLISHED_PORTS
+#define AOS_CONFIG_TYPES_MAX_NUM_PUBLISHED_PORTS 8
+#endif
+
+/**
  * Max number of service instance connections.
  */
 #ifndef AOS_CONFIG_TYPES_MAX_NUM_ALLOWED_CONNECTIONS

@@ -72,6 +72,45 @@ static constexpr auto cMaxNumExposedPorts = AOS_CONFIG_TYPES_MAX_NUM_EXPOSED_POR
 static constexpr auto cExposedPortLen = cPortLen + cProtocolNameLen;
 
 /**
+ * Max number of published ports.
+ */
+static constexpr auto cMaxNumPublishedPorts = AOS_CONFIG_TYPES_MAX_NUM_PUBLISHED_PORTS;
+
+/**
+ * Published port.
+ *
+ * Maps a host port to a container port so the instance can be reached from outside the unit.
+ * Unlike exposed ports, which declare inter-service accessibility, published ports create
+ * a DNAT rule on the host.
+ */
+struct PublishedPort {
+    uint16_t                       mHostPort {};
+    uint16_t                       mContainerPort {};
+    StaticString<cProtocolNameLen> mProtocol;
+    StaticString<cIPLen>           mHostIP;
+
+    /**
+     * Compares published ports.
+     *
+     * @param rhs published port to compare.
+     * @return bool.
+     */
+    bool operator==(const PublishedPort& rhs) const
+    {
+        return mHostPort == rhs.mHostPort && mContainerPort == rhs.mContainerPort && mProtocol == rhs.mProtocol
+            && mHostIP == rhs.mHostIP;
+    }
+
+    /**
+     * Compares published ports.
+     *
+     * @param rhs published port to compare.
+     * @return bool.
+     */
+    bool operator!=(const PublishedPort& rhs) const { return !operator==(rhs); }
+};
+
+/**
  * Max length of connection name.
  */
 static constexpr auto cConnectionNameLen = cIDLen + cExposedPortLen;
