@@ -888,6 +888,10 @@ Error NetworkManager::PrepareNetworkConfigList(const String& instanceID, const S
         return err;
     }
 
+    if (auto err = CreateHostDevicePluginConfig(network, net.mHostDevice); !err.IsNone()) {
+        return err;
+    }
+
     return ErrorEnum::eNone;
 }
 
@@ -957,6 +961,31 @@ Error NetworkManager::CreateFirewallPluginConfig(
             return AOS_ERROR_WRAP(err);
         }
     }
+
+    return ErrorEnum::eNone;
+}
+
+Error NetworkManager::CreateHostDevicePluginConfig(
+    const InstanceNetworkParameters& network, cni::HostDevicePluginConf& config) const
+{
+    if (network.mNetworkDevices.IsEmpty()) {
+        return ErrorEnum::eNone;
+    }
+
+    // The host-device plugin takes a single interface per invocation, and the CNI config list
+    // holds one host-device entry. Granting more than one interface would need one plugin entry
+    // per interface; fail loudly rather than silently dropping the rest.
+    if (network.mNetworkDevices.Size() > 1) {
+        LOG_ERR() << "Only one host network device per instance is supported"
+                  << Log::Field("count", network.mNetworkDevices.Size());
+
+        return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
+    }
+
+    LOG_DBG() << "Create host device plugin config" << Log::Field("device", network.mNetworkDevices[0]);
+
+    config.mType   = "host-device";
+    config.mDevice = network.mNetworkDevices[0];
 
     return ErrorEnum::eNone;
 }

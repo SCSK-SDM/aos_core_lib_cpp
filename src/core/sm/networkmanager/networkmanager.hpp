@@ -173,6 +173,8 @@ private:
         const String& instanceID, const InstanceNetworkParameters& network, cni::FirewallPluginConf& config) const;
     Error CreateBandwidthPluginConfig(const InstanceNetworkParameters& network, cni::BandwidthNetConf& config) const;
     Error CreatePortmapPluginConfig(const InstanceNetworkParameters& network, cni::PortmapPluginConf& config) const;
+    Error CreateHostDevicePluginConfig(
+        const InstanceNetworkParameters& network, cni::HostDevicePluginConf& config) const;
     Error CreateDNSPluginConfig(
         const String& networkID, const InstanceNetworkParameters& network, cni::DNSPluginConf& config) const;
     Error UpdateInstanceNetworkCache(const String& instanceID, const String& networkID, const String& instanceIP,

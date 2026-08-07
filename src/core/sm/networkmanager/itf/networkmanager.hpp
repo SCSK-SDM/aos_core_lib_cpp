@@ -48,6 +48,12 @@ struct InstanceNetworkParameters {
     StaticArray<StaticString<cExposedPortLen>, cMaxNumExposedPorts> mExposedPorts;
     StaticArray<PublishedPort, cMaxNumPublishedPorts>               mPublishedPorts;
     StaticArray<Host, cMaxNumHosts>                                 mHosts;
+    /**
+     * Host network interfaces granted to the instance (e.g. SocketCAN "can0"), collected
+     * from the resources the instance requests. They have no /dev node, so they are moved
+     * into the instance network namespace instead of being mounted as devices.
+     */
+    StaticArray<StaticString<cInterfaceLen>, cMaxNumHostDevices>    mNetworkDevices;
     StaticString<cFilePathLen>                                      mHostsFilePath;
     StaticString<cFilePathLen>                                      mResolvConfFilePath;
     uint64_t                                                        mUploadLimit {};
@@ -67,6 +73,7 @@ struct InstanceNetworkParameters {
             && mIngressKbit == instanceNetworkParams.mIngressKbit && mEgressKbit == instanceNetworkParams.mEgressKbit
             && mExposedPorts == instanceNetworkParams.mExposedPorts
             && mPublishedPorts == instanceNetworkParams.mPublishedPorts && mHosts == instanceNetworkParams.mHosts
+            && mNetworkDevices == instanceNetworkParams.mNetworkDevices
             && mHostsFilePath == instanceNetworkParams.mHostsFilePath
             && mResolvConfFilePath == instanceNetworkParams.mResolvConfFilePath
             && mUploadLimit == instanceNetworkParams.mUploadLimit
