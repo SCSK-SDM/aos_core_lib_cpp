@@ -193,6 +193,22 @@ struct PortmapPluginConf {
 };
 
 /**
+ * Host device plugin configuration.
+ *
+ * Moves an existing host network interface (e.g. SocketCAN "can0") into the instance
+ * network namespace. Used for devices that have no /dev node and therefore cannot be
+ * passed through the OCI linux.devices path.
+ *
+ * The move is exclusive: while the instance holds the interface it is not visible on
+ * the host. On DEL, and when the namespace is destroyed, the kernel returns physical
+ * interfaces to the initial namespace.
+ */
+struct HostDevicePluginConf {
+    StaticString<cPluginTypeLen> mType;
+    StaticString<cInterfaceLen>  mDevice;
+};
+
+/**
  * DNS plugin configuration.
  */
 struct DNSPluginConf {
@@ -256,6 +272,7 @@ struct NetworkConfigList {
     BandwidthNetConf          mBandwidth;
     DNSPluginConf             mDNS;
     PortmapPluginConf         mPortmap;
+    HostDevicePluginConf      mHostDevice;
     Result                    mPrevResult;
 };
 
