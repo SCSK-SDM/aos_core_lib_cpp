@@ -982,10 +982,36 @@ Error NetworkManager::CreateHostDevicePluginConfig(
         return AOS_ERROR_WRAP(ErrorEnum::eNotSupported);
     }
 
-    LOG_DBG() << "Create host device plugin config" << Log::Field("device", network.mNetworkDevices[0]);
+    const auto& device = network.mNetworkDevices[0];
+
+    // インタフェースの実在をここで確かめる。
+    //
+    // 本関数は AddNetworkList() より前に呼ばれるので、ここで失敗すれば CNI チェーンに
+    // 一切入らない。存在しないまま先へ進むと bridge → dnsname → firewall が成功した
+    // あとに host-device が "Link not found" で落ち、**dnsname のエイリアスと IPAM の
+    // 予約が残る**。上流は ADD の途中失敗をロールバックしないため、再試行のたびに
+    // 残留が積まれ、以後は "Alias already exists" など無関係なエラーに化ける。
+    //
+    // 起きる状況: CAN HAT を載せていない機体に can を要求するサービスを配信したとき。
+    // resources.cfg は機体共通で配っているので、実際に踏みやすい（2026-08-09 に実機で発生）。
+    StaticString<cFilePathLen> sysfsPath;
+
+    if (auto err = sysfsPath.Format("/sys/class/net/%s", device.CStr()); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (access(sysfsPath.CStr(), F_OK) != 0) {
+        LOG_ERR() << "Host network device not found on this node"
+                  << Log::Field("device", device)
+                  << Log::Field("hint", "the interface must exist before an instance can request it");
+
+        return AOS_ERROR_WRAP(Error(ErrorEnum::eNotFound, "requested host network device does not exist"));
+    }
+
+    LOG_DBG() << "Create host device plugin config" << Log::Field("device", device);
 
     config.mType   = "host-device";
-    config.mDevice = network.mNetworkDevices[0];
+    config.mDevice = device;
 
     return ErrorEnum::eNone;
 }
