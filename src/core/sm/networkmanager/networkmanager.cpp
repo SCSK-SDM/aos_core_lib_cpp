@@ -362,15 +362,24 @@ Error NetworkManager::DeleteInstanceNetworkConfig(const String& instanceID, cons
         return AOS_ERROR_WRAP(err);
     }
 
-    if (err = mCNI->DeleteNetworkList(*netConfig, *rtConfig); !err.IsNone()) {
-        return AOS_ERROR_WRAP(err);
+    // Drop the namespace even when the plugins failed.
+    //
+    // A device moved into the namespace comes back to the host when the namespace goes,
+    // so returning early on a plugin error strands it: the host no longer has the
+    // interface and every later start fails asking for it. The error is still reported.
+    auto errDelete = mCNI->DeleteNetworkList(*netConfig, *rtConfig);
+    if (!errDelete.IsNone()) {
+        errDelete = AOS_ERROR_WRAP(errDelete);
+
+        LOG_ERR() << "Failed to delete network list, removing namespace anyway"
+                  << Log::Field("instanceID", instanceID) << Log::Field(errDelete);
     }
 
     if (err = mNetns->DeleteNetworkNamespace(instanceID); !err.IsNone()) {
         return err;
     }
 
-    return ErrorEnum::eNone;
+    return errDelete;
 }
 
 RetWithError<StaticString<cFilePathLen>> NetworkManager::GetNetnsPath(const String& instanceID) const
