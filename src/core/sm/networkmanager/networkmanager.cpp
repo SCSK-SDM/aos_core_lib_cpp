@@ -1854,6 +1854,10 @@ Error NetworkManager::PrepareInstanceFirewallParams(const InstanceNetworkConfig&
         }
     }
 
+    if (auto err = params.mPublished.Assign(networkConfig.mPublishedPorts); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
     return ErrorEnum::eNone;
 }
 

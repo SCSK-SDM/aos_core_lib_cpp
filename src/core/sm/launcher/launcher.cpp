@@ -10,6 +10,160 @@
 
 namespace aos::sm::launcher {
 
+namespace {
+
+/**
+ * Environment variable carrying the published ports of the instance.
+ *
+ * The cloud service config has no field for host port publishing, so the value
+ * travels through the OCI image environment (set from the service config.yaml
+ * "env"). Format: comma separated entries, each one of
+ *   <port>                               (host port = container port, tcp)
+ *   <port>/<proto>
+ *   <hostPort>:<containerPort>[/<proto>]
+ *   <hostIP>:<hostPort>:<containerPort>[/<proto>]
+ */
+constexpr auto cPublishedPortsEnvVar = "AOS_PUBLISHED_PORTS=";
+
+RetWithError<uint16_t> ParsePort(const String& str)
+{
+    if (str.IsEmpty()) {
+        return {0, ErrorEnum::eInvalidArgument};
+    }
+
+    for (const auto c : str) {
+        if (c < '0' || c > '9') {
+            return {0, ErrorEnum::eInvalidArgument};
+        }
+    }
+
+    auto [value, err] = str.ToUint64();
+    if (!err.IsNone() || value == 0 || value > 65535) {
+        return {0, ErrorEnum::eInvalidArgument};
+    }
+
+    return {static_cast<uint16_t>(value), ErrorEnum::eNone};
+}
+
+Error ParsePublishedPortEntry(const String& entry, PublishedPort& port)
+{
+    StaticArray<StaticString<cEnvVarLen>, 2> protoParts;
+
+    if (auto err = entry.Split(protoParts, '/'); !err.IsNone()) {
+        return err;
+    }
+
+    if (protoParts.IsEmpty() || protoParts.Size() > 2) {
+        return ErrorEnum::eInvalidArgument;
+    }
+
+    if (protoParts.Size() == 2) {
+        if (protoParts[1] != "tcp" && protoParts[1] != "udp") {
+            return ErrorEnum::eInvalidArgument;
+        }
+
+        if (auto err = port.mProtocol.Assign(protoParts[1]); !err.IsNone()) {
+            return err;
+        }
+    } else {
+        if (auto err = port.mProtocol.Assign("tcp"); !err.IsNone()) {
+            return err;
+        }
+    }
+
+    StaticArray<StaticString<cEnvVarLen>, 3> parts;
+
+    if (auto err = protoParts[0].Split(parts, ':'); !err.IsNone()) {
+        return err;
+    }
+
+    Error err;
+
+    switch (parts.Size()) {
+    case 1:
+        Tie(port.mContainerPort, err) = ParsePort(parts[0]);
+        port.mHostPort                = port.mContainerPort;
+        break;
+
+    case 2:
+        Tie(port.mHostPort, err) = ParsePort(parts[0]);
+        if (err.IsNone()) {
+            Tie(port.mContainerPort, err) = ParsePort(parts[1]);
+        }
+        break;
+
+    case 3:
+        if (err = port.mHostIP.Assign(parts[0]); !err.IsNone()) {
+            return err;
+        }
+
+        Tie(port.mHostPort, err) = ParsePort(parts[1]);
+        if (err.IsNone()) {
+            Tie(port.mContainerPort, err) = ParsePort(parts[2]);
+        }
+        break;
+
+    default:
+        return ErrorEnum::eInvalidArgument;
+    }
+
+    return err;
+}
+
+/**
+ * Collects published ports from the image environment. A malformed entry is
+ * skipped with a warning rather than failing the instance: the value is
+ * authored by the service developer and a single typo should not make an
+ * already deployed service unstartable.
+ */
+Error ParsePublishedPorts(const oci::ImageConfig& imageConfig, Array<PublishedPort>& publishedPorts)
+{
+    publishedPorts.Clear();
+
+    const String prefix(cPublishedPortsEnvVar);
+
+    for (const auto& env : imageConfig.mConfig.mEnv) {
+        if (env.Size() < prefix.Size() || String(env.CStr(), prefix.Size()) != prefix) {
+            continue;
+        }
+
+        const String value(env.CStr() + prefix.Size());
+
+        StaticArray<StaticString<cEnvVarLen>, cMaxNumPublishedPorts + 1> entries;
+
+        if (auto err = value.Split(entries, ','); !err.IsNone()) {
+            LOG_WRN() << "Too many published port entries, extra ones skipped" << Log::Field(err);
+        }
+
+        for (const auto& entry : entries) {
+            if (entry.IsEmpty()) {
+                continue;
+            }
+
+            PublishedPort port;
+
+            if (auto err = ParsePublishedPortEntry(entry, port); !err.IsNone()) {
+                LOG_WRN() << "Skip invalid published port entry" << Log::Field("entry", entry);
+
+                continue;
+            }
+
+            if (auto err = publishedPorts.PushBack(port); !err.IsNone()) {
+                LOG_WRN() << "Too many published ports, entry skipped" << Log::Field("entry", entry);
+
+                continue;
+            }
+
+            LOG_DBG() << "Publish port" << Log::Field("hostIP", port.mHostIP) << Log::Field("hostPort", port.mHostPort)
+                      << Log::Field("containerPort", port.mContainerPort) << Log::Field("protocol", port.mProtocol);
+        }
+    }
+
+    return ErrorEnum::eNone;
+}
+
+} // namespace
+
 /***********************************************************************************************************************
  * Public
  **********************************************************************************************************************/
@@ -1603,6 +1757,10 @@ Error Launcher::GetInstanceNetworkConfig(const InstanceInfo& instance, const oci
     }
 
     if (auto err = networkConfig.mExposedPorts.Assign(imageConfig.mConfig.mExposedPorts); !err.IsNone()) {
+        return AOS_ERROR_WRAP(err);
+    }
+
+    if (auto err = ParsePublishedPorts(imageConfig, networkConfig.mPublishedPorts); !err.IsNone()) {
         return AOS_ERROR_WRAP(err);
     }
 

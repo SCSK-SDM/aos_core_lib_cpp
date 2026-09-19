@@ -51,6 +51,9 @@ struct InstanceFirewallParams {
     bool                                                  mAllowPublic {};
     StaticArray<InputAccessConfig, cMaxNumExposedPorts>   mInput;
     StaticArray<OutputAccessConfig, cMaxNumFirewallRules> mOutput;
+    // Host ports published to the outside (DNAT to the instance). Not part of
+    // the access rules above: the firewall opens the container port itself.
+    StaticArray<PublishedPort, cMaxNumPublishedPorts>     mPublished;
 };
 
 /**
