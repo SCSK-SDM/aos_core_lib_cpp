@@ -1734,6 +1734,16 @@ Error Launcher::GetInstanceNetworkConfig(const InstanceInfo& instance, const oci
             !err.IsNone()) {
             return AOS_ERROR_WRAP(err);
         }
+
+        for (const auto& device : resourceInfo->mNetworkDevices) {
+            if (networkConfig.mNetworkDevices.Find(device) != networkConfig.mNetworkDevices.end()) {
+                continue;
+            }
+
+            if (auto err = networkConfig.mNetworkDevices.PushBack(device); !err.IsNone()) {
+                return AOS_ERROR_WRAP(err);
+            }
+        }
     }
 
     if (itemConfig.mHostname.HasValue()) {

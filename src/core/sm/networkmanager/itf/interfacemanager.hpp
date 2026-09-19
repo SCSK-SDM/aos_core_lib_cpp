@@ -154,6 +154,17 @@ public:
     virtual Error MoveLinkToNamespace(const String& ifname, const String& netNSPath) = 0;
 
     /**
+     * Hands a physical host interface to an instance: moves it into the network
+     * namespace, restores link-type settings that the move drops (a USB CAN adapter
+     * loses its bit timing when the kernel closes it on the way) and brings it up.
+     *
+     * @param ifname interface name.
+     * @param netNSPath path to the target netns (e.g. /run/netns/<id>).
+     * @return Error.
+     */
+    virtual Error MoveHostInterfaceToNamespace(const String& ifname, const String& netNSPath) = 0;
+
+    /**
      * Renames a link.
      *
      * The link must be down. If netNSPath is non-empty, the operation runs

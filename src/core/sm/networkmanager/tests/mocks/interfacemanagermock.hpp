@@ -25,6 +25,7 @@ public:
     MOCK_METHOD(
         Error, ConfigureInstanceInterface, (const String&, const String&, const String&, const String&), (override));
     MOCK_METHOD(Error, MoveLinkToNamespace, (const String&, const String&), (override));
+    MOCK_METHOD(Error, MoveHostInterfaceToNamespace, (const String&, const String&), (override));
     MOCK_METHOD(Error, RenameLink, (const String&, const String&, const String&), (override));
     MOCK_METHOD(Error, AddAddress, (const String&, const String&, const String&), (override));
     MOCK_METHOD(Error, AddRoute, (const String&, const String&, const String&), (override));

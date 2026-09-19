@@ -955,6 +955,18 @@ Error NetworkManager::AddInstanceToNetwork(const String& instanceID, const Strin
         }
     });
 
+    // Host interfaces granted through resources (e.g. SocketCAN) go into the
+    // instance namespace. No explicit rollback: a physical interface returns
+    // to the host by itself when the namespace is deleted (cleanupNetworkNamespace).
+    for (const auto& device : networkConfig.mNetworkDevices) {
+        LOG_DBG() << "Move host interface to instance" << Log::Field("instanceID", instanceID)
+                  << Log::Field("ifname", device);
+
+        if (err = mNetIf->MoveHostInterfaceToNamespace(device, netNSPath); !err.IsNone()) {
+            return AOS_ERROR_WRAP(err);
+        }
+    }
+
     auto firewallParams = MakeUnique<InstanceFirewallParams>(mAllocator);
     if (!firewallParams) {
         err = AOS_ERROR_WRAP(ErrorEnum::eNoMemory);

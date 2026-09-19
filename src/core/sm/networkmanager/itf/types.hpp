@@ -33,6 +33,7 @@ struct InstanceNetworkConfig {
     uint64_t                                                          mEgressKbit {};
     StaticArray<StaticString<cExposedPortLen>, cMaxNumExposedPorts>   mExposedPorts;
     StaticArray<PublishedPort, cMaxNumPublishedPorts>                 mPublishedPorts;
+    StaticArray<StaticString<cInterfaceLen>, cMaxNumHostDevices>      mNetworkDevices;
     StaticArray<StaticString<cConnectionNameLen>, cMaxNumConnections> mAllowedConnections;
     StaticArray<Host, cMaxNumHosts>                                   mHosts;
     uint64_t                                                          mUploadLimit {};
@@ -42,7 +43,7 @@ struct InstanceNetworkConfig {
     {
         return mInstanceIdent == rhs.mInstanceIdent && mHostname == rhs.mHostname && mAliases == rhs.mAliases
             && mIngressKbit == rhs.mIngressKbit && mEgressKbit == rhs.mEgressKbit && mExposedPorts == rhs.mExposedPorts
-            && mPublishedPorts == rhs.mPublishedPorts
+            && mPublishedPorts == rhs.mPublishedPorts && mNetworkDevices == rhs.mNetworkDevices
             && mAllowedConnections == rhs.mAllowedConnections && mHosts == rhs.mHosts
             && mUploadLimit == rhs.mUploadLimit && mDownloadLimit == rhs.mDownloadLimit;
     }

@@ -26,6 +26,15 @@ struct ResourceInfo : public aos::ResourceInfo {
     StaticArray<StaticString<cEnvVarLen>, cMaxNumEnvVariables>    mEnv;
     StaticArray<Host, cMaxNumHosts>                               mHosts;
     StaticArray<StaticString<cDeviceNameLen>, cMaxNumHostDevices> mDevices;
+    /**
+     * Host network interfaces granted to the instance (e.g. SocketCAN "can0").
+     *
+     * Unlike mDevices these have no /dev node, so they cannot be passed through the
+     * OCI linux.devices path. They are moved into the instance network namespace
+     * instead. Moving is exclusive: while an instance holds the interface it is not
+     * visible on the host; it comes back when the namespace is deleted.
+     */
+    StaticArray<StaticString<cInterfaceLen>, cMaxNumHostDevices> mNetworkDevices;
 };
 
 /**
