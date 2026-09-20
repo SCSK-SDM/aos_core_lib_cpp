@@ -165,6 +165,21 @@ public:
     virtual Error MoveHostInterfaceToNamespace(const String& ifname, const String& netNSPath) = 0;
 
     /**
+     * Returns a host interface from an instance network namespace to the host.
+     *
+     * Deleting the namespace would return the interface by itself, but only once the
+     * kernel has actually torn the namespace down, which happens asynchronously. An
+     * instance restarted right after a stop then finds the interface missing. Moving it
+     * back synchronously makes the interface available again the moment the stop
+     * completes.
+     *
+     * @param ifname interface name.
+     * @param netNSPath path to the netns the interface currently lives in.
+     * @return Error.
+     */
+    virtual Error MoveInterfaceToHost(const String& ifname, const String& netNSPath) = 0;
+
+    /**
      * Renames a link.
      *
      * The link must be down. If netNSPath is non-empty, the operation runs

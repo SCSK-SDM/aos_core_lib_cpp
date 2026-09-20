@@ -1149,6 +1149,11 @@ Error NetworkManager::DeleteInstanceNetworkConfig(const String& instanceID, cons
     DNSServerItf*               dnsServer    = nullptr;
     bool                        hasBandwidth = false;
 
+    auto networkDevices = MakeUnique<StaticArray<StaticString<cInterfaceLen>, cMaxNumHostDevices>>(mAllocator);
+    if (!networkDevices) {
+        return AOS_ERROR_WRAP(ErrorEnum::eNoMemory);
+    }
+
     {
         LockGuard lock {mMutex};
 
@@ -1159,6 +1164,7 @@ Error NetworkManager::DeleteInstanceNetworkConfig(const String& instanceID, cons
         if (auto it = mInstanceNetworkInfos.Find(instanceID); it != mInstanceNetworkInfos.end()) {
             hostIfName   = it->mSecond.mHostIfName;
             hasBandwidth = it->mSecond.mNetworkConfig.mIngressKbit > 0 || it->mSecond.mNetworkConfig.mEgressKbit > 0;
+            *networkDevices = it->mSecond.mNetworkConfig.mNetworkDevices;
         } else {
             LOG_WRN() << "Instance network info not found for cleanup" << Log::Field("instanceID", instanceID);
         }
@@ -1195,6 +1201,30 @@ Error NetworkManager::DeleteInstanceNetworkConfig(const String& instanceID, cons
         // as the namespace teardown already removes the interface.
     } else {
         LOG_DBG() << "Instance was never started, skipping itf cleanup" << Log::Field("instanceID", instanceID);
+    }
+
+    // Host interfaces handed to the instance (SocketCAN etc.) are moved back
+    // synchronously. The namespace teardown below is lazy: the kernel returns the
+    // interface only when the namespace is finally destroyed, and a restart of the
+    // same instance (SM restart, reinstall) can run before that and fail with
+    // "requested host network device does not exist". Failing to move it back is
+    // not fatal for the stop: the teardown still returns it eventually.
+    if (!hostIfName.IsEmpty() && !networkDevices->IsEmpty()) {
+        auto [netNSPath, errPath] = GetNetnsPath(instanceID);
+        if (!errPath.IsNone()) {
+            LOG_WRN() << "Failed to get netns path for host interface cleanup" << Log::Field("instanceID", instanceID)
+                      << Log::Field(errPath);
+        } else {
+            for (const auto& device : *networkDevices) {
+                LOG_DBG() << "Return host interface from instance" << Log::Field("instanceID", instanceID)
+                          << Log::Field("ifname", device);
+
+                if (auto errMove = mNetIf->MoveInterfaceToHost(device, netNSPath); !errMove.IsNone()) {
+                    LOG_WRN() << "Failed to return host interface" << Log::Field("instanceID", instanceID)
+                              << Log::Field("ifname", device) << Log::Field(errMove);
+                }
+            }
+        }
     }
 
     if (auto errDel = mNetns->DeleteNetworkNamespace(instanceID); !errDel.IsNone() && err.IsNone()) {
